@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--为CircleImageView-->
+    <declare-styleable name="CircleImageView">
+        <attr name="frameColor" format="color"></attr>
+        <attr name="frameWidth" format="dimension"></attr>
+    </declare-styleable>
+</resources>
