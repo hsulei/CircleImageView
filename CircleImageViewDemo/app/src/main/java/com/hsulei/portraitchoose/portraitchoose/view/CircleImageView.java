@@ -1,14 +1,17 @@
 package com.hsulei.portraitchoose.portraitchoose.view;
 
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.drawable.Drawable;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.drawable.BitmapDrawable;
+import android.os.CancellationSignal;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.widget.ImageView;
 
 import com.hsulei.portraitchoose.portraitchoose.R;
@@ -18,112 +21,120 @@ import com.hsulei.portraitchoose.portraitchoose.R;
  */
 //自定义的圆形头像控件
 public class CircleImageView extends ImageView {
+
     private static final String TAG = "CircleImageView";
 
-    //边框颜色
-    private int mFrameColor;
-    //边框宽度
-    private float mFrameWidth;
-    //控件的宽度
-    private int width;
-    //控件的高端
-    private int height;
-
-    //背景图片
-    private Drawable mBackground;
-
+    private int mFrameWidth = 3;
+    private int mFrameColor = Color.GRAY;
     //画笔
     private Paint mPaint;
 
+    //用于展示背景图片的宽高
+    private int bitmapWidth;
+    private int bitmapHeight;
+
     public CircleImageView(Context context) {
         super(context);
-        setAttr(context, null);
+        initAttr(context, null);
     }
 
     public CircleImageView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        setAttr(context, attrs);
+        initAttr(context, attrs);
     }
 
     public CircleImageView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        setAttr(context, attrs);
+        initAttr(context, attrs);
     }
 
-    //设置属性
-    private void setAttr(Context context, AttributeSet attrs) {
-        TypedArray array = context.obtainStyledAttributes(attrs, R.styleable.CircleImageView);
-        int len = array.getIndexCount();//获取属性的数量
+    //初始化自定义属性
+    public void initAttr(Context context, AttributeSet attrs) {
+        if (attrs != null) {
+            TypedArray array = context.obtainStyledAttributes(attrs, R.styleable.CircleImageView);
+            int len = array.getIndexCount();//得到定义的属性的长度
 
-        //设置属性
-        for (int i = 0; i < len; i++) {
-            switch (array.getIndex(i)) {
-                case R.styleable.CircleImageView_frameColor:
-                    mFrameWidth = array.getDimension(i, 2);
-                    Log.i(TAG, "获取的边框的宽度是：" + mFrameWidth);
-                    break;
-                case R.styleable.CircleImageView_frameWidth:
-                    mFrameColor = array.getColor(i, Color.GRAY);
-                    Log.i(TAG, "获取的边框颜色是：" + mFrameColor);
-                    break;
+            for (int i = 0; i < len; i++) {
+                int attr = array.getIndex(i);//得到所有的属性
+                switch (attr) {
+                    case R.styleable.CircleImageView_frameColor: //得到自定义的圆形边框颜色
+                        mFrameColor = array.getColor(attr, Color.GRAY);
+                        break;
+                    case R.styleable.CircleImageView_frameWidth://得到自定义的圆形边框宽度
+                        mFrameWidth = (int) array.getDimension(attr, 3);
+                        break;
+                }
             }
         }
-
-        //设置画笔属性
+        //设置Paint参数
         mPaint = new Paint();
-        mPaint.setColor(mFrameColor);//设置画笔颜色
-        mPaint.setAntiAlias(true);//设置抗锯齿
-        mPaint.setStrokeWidth(mFrameWidth);//设置线条宽度
+        mPaint.setAntiAlias(true);
+        mPaint.setColor(mFrameColor);
     }
-
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        this.width = measureWidth(widthMeasureSpec);
-        this.height = measureHeight(heightMeasureSpec);
+        int width = measureWidth(widthMeasureSpec);
+        int height = measureHeight(heightMeasureSpec);
 
-        Log.i(TAG, "最后的高度：" + height);
-        Log.i(TAG, "最后的宽度：" + width);
-        //重新设置控件宽高
-        this.setMeasuredDimension(widthMeasureSpec, heightMeasureSpec);
+        bitmapWidth = width - 2 * mFrameWidth;
+        bitmapHeight = height - 2 * mFrameWidth;
+
+        this.setMeasuredDimension(width, height);
     }
 
-    //获得宽度
-    private int measureWidth(int widthMeasureSpec) {
-        int width = 50;//设置默认值
-        int mode = MeasureSpec.getMode(widthMeasureSpec);
-        int size = MeasureSpec.getSize(widthMeasureSpec);
-
-        if (mode == MeasureSpec.EXACTLY) {
-            width = size;
-        }
-        return width;
-    }
-
-    //获取高度
     private int measureHeight(int heightMeasureSpec) {
-        int height = 50;//设置默认值
-        int mode = MeasureSpec.getMode(heightMeasureSpec);
+        int height = 0;
         int size = MeasureSpec.getSize(heightMeasureSpec);
+        int mode = MeasureSpec.getMode(heightMeasureSpec);
 
         if (mode == MeasureSpec.EXACTLY) {
             height = size;
+        } else {
+            height = 50;
         }
         return height;
     }
 
+    private int measureWidth(int widthMeasureSpec) {
+        int width = 0;
+        //得到宽的值和模式
+        int size = MeasureSpec.getSize(widthMeasureSpec);
+        int mode = MeasureSpec.getMode(widthMeasureSpec);
+
+        if (mode == MeasureSpec.EXACTLY) {
+            width = size;
+        } else {
+            width = 50;
+        }
+        return width;
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-        mBackground = this.getDrawable();
+        //画边框圆
+        int min = Math.min(bitmapHeight, bitmapWidth);//得到bitmapHeight和bitmapWidth中较小的值
+        BitmapDrawable background = (BitmapDrawable) getDrawable();//得到背景图片
 
-        Bitmap mBitmap = Bitmap.createBitmap(mBackground.getIntrinsicWidth(), mBackground.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);//创建一个和背景一样大的图片
+        Bitmap image = Bitmap.createScaledBitmap(background.getBitmap(), min, min, false);//创建一个缩略图
+        canvas.drawCircle((min + 2 * mFrameWidth) / 2, (min + 2 * mFrameWidth) / 2, (min + mFrameWidth) / 2, mPaint);//话圆边框
 
-        int min = Math.min(width, height);//选择最小项
-        Bitmap.createScaledBitmap(mBitmap, min, min, false);
 
-        canvas = new Canvas();//把背景设置
-        invalidate();//要求绘制
+        canvas.drawBitmap(drawCircleBitmap(image, min), mFrameWidth, mFrameWidth, null);//话图片
+    }
+
+
+    private Bitmap drawCircleBitmap(Bitmap background, int min) {
+        Bitmap circle = Bitmap.createBitmap(min, min, Bitmap.Config.ARGB_8888);//新建一个图片
+        Canvas canvas = new Canvas(circle);
+        Paint paint = new Paint();
+        paint.setAntiAlias(true);
+        canvas.drawCircle(min / 2, min / 2, min / 2, paint);
+        paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_IN));
+        canvas.drawBitmap(background, 0, 0, paint);
+        return circle;
+
+
     }
 }
