@@ -2,7 +2,9 @@
 <resources>
     <!--为CircleImageView-->
     <declare-styleable name="CircleImageView">
+        <!--外圆颜色-->
         <attr name="frameColor" format="color"></attr>
+        <!--外圆超出部分宽度-->
         <attr name="frameWidth" format="dimension"></attr>
     </declare-styleable>
 </resources>
